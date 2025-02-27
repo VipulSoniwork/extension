@@ -1,11 +1,15 @@
 {
   "manifest_version": 3,
-  "name": "Gmail Signature Extension",
+  "name": "Gmail Signature Manager",
   "version": "1.0",
   "description": "Automatically adds signature when composing new emails in Gmail",
   "permissions": [
-    "activeTab"
+    "activeTab",
+    "storage"
   ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
   "content_scripts": [
     {
       "matches": ["https://mail.google.com/*"],
@@ -13,8 +17,11 @@
       "css": ["styles.css"]
     }
   ],
-  "icons": {
-    "48": "icon48.png",
-    "128": "icon128.png"
-  }
-} 
+  "options_page": "options.html",
+  "web_accessible_resources": [{
+    "resources": ["styles.css"],
+    "matches": ["https://mail.google.com/*"]
+  }]
+}
+
+ 

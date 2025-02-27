@@ -1,24 +1,50 @@
-// Function to create signature HTML
-function createSignature() {
-  return `
-    <div class="gmail-signature">
-      <p style="font-family: Arial, sans-serif; font-size: 13px; color: #666;">
-        Your Name<br>
-        Position | Company<br>
-        <a href="tel:+1234567890" style="color: #1a73e8; text-decoration: none;">+1 (234) 567-890</a><br>
-        <a href="mailto:your.email@company.com" style="color: #1a73e8; text-decoration: none;">your.email@company.com</a>
-      </p>
-    </div>
-  `;
+// Function to get stored signatures and settings
+async function getStoredSettings() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['signOffs', 'autoInsert', 'defaultSignoff'], (result) => {
+      resolve({
+        signOffs: result.signOffs || [],
+        autoInsert: result.autoInsert || false,
+        defaultSignoff: result.defaultSignoff || ''
+      });
+    });
+  });
+}
+
+// Function to get random or default signature
+function getSignature(signOffs, defaultSignoff) {
+  if (defaultSignoff && signOffs.includes(defaultSignoff)) {
+    return defaultSignoff;
+  }
+  return signOffs[Math.floor(Math.random() * signOffs.length)];
 }
 
 // Function to insert signature
-function insertSignature(composeWindow) {
-  // Wait for the email content area to be ready
+async function insertSignature(composeWindow) {
+  const settings = await getStoredSettings();
+  
+  if (!settings.autoInsert || settings.signOffs.length === 0) {
+    return;
+  }
+
   setTimeout(() => {
-    const signatureDiv = composeWindow.querySelector('[role="textbox"]');
-    if (signatureDiv && !signatureDiv.querySelector('.gmail-signature')) {
-      signatureDiv.innerHTML += createSignature();
+    const emailBody = composeWindow.querySelector('[role="textbox"]');
+    if (emailBody && !emailBody.dataset.signatureAdded) {
+      const signature = getSignature(settings.signOffs, settings.defaultSignoff);
+      
+      // Insert HTML signature
+      emailBody.focus();
+      const range = document.createRange();
+      range.selectNodeContents(emailBody);
+      range.collapse(false);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      
+      document.execCommand('insertHTML', false, `\n\n${signature}`);
+      
+      // Mark as processed
+      emailBody.dataset.signatureAdded = 'true';
     }
   }, 1000);
 }
@@ -27,8 +53,7 @@ function insertSignature(composeWindow) {
 const observer = new MutationObserver((mutations) => {
   mutations.forEach((mutation) => {
     mutation.addedNodes.forEach((node) => {
-      if (node.nodeType === 1) { // Check if it's an element node
-        // Look for compose window
+      if (node.nodeType === 1) {
         const composeWindow = node.querySelector('[role="dialog"]');
         if (composeWindow) {
           insertSignature(composeWindow);
@@ -38,7 +63,7 @@ const observer = new MutationObserver((mutations) => {
   });
 });
 
-// Start observing the document body for changes
+// Start observing
 observer.observe(document.body, {
   childList: true,
   subtree: true
