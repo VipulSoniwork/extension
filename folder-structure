@@ -1,0 +1,5 @@
+gmail-signature-extension/
+├── manifest.json
+├── content.js
+├── background.js
+└── styles.css 
